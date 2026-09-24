@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?  @unique
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+
+  users     User[]
+  policies  Policy[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String
+  department   String?
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([role])
+}
+
+model Policy {
+  id           String   @id @default(cuid())
+  companyId    String
+  code         String
+  title        String
+  content      String
+  department   String?
+  priorityHint String?
+  sourceFile   String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, department])
+}
