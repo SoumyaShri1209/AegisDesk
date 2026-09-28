@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
 import { BookOpen, Upload } from "lucide-react";
+import ReindexButton from "../../../../components/admin/ReindexButton";
 
 export default async function PoliciesPage() {
   const session = await getServerSession(authOptions);
@@ -23,15 +24,16 @@ export default async function PoliciesPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Link
-            href="/admin/policies/upload"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 transition text-sm"
-          >
-            <Upload className="w-4 h-4" />
-            Upload PDF
-          </Link>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+  <ReindexButton />
+  <Link
+    href="/admin/policies/upload"
+    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 transition text-sm"
+  >
+    <Upload className="w-4 h-4" />
+    Upload PDF
+  </Link>
+</div>
       </div>
 
       {policies.length === 0 ? (

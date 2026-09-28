@@ -10,8 +10,11 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@prisma/orm-extension-pgvector": "^8.0.0-rc.11",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "dotenv": "^18.0.3",
@@ -23,6 +26,8 @@
     "prisma": "^7.10.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {

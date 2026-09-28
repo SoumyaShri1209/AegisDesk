@@ -70,5 +70,33 @@ html, body {
   color: transparent;
 }
 
-::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-thumb { background: #1e2a55; border-radius: 8px; }
+/* Scrollbar — subtle, matches theme */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #1e2a55;
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: #2a3a6f; }
+
+/* Focus rings — accessible but on-brand */
+*:focus-visible {
+  outline: 2px solid rgba(58,99,255,0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Button and link focus reset — keep our own rings */
+button:focus,
+a:focus {
+  outline: none;
+}
+
+/* Smooth details/summary expand */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}

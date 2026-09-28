@@ -1,24 +1,31 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { authOptions } from "../../../lib/auth";
-import {
-  ShieldCheck,
-  LayoutDashboard,
-  BookOpen,
-  Upload,
-  LogOut,
-} from "lucide-react";
+import { authOptions } from "@/lib/auth";
+import { runSlaBreachCheck } from "@/lib/tickets/sla-check";
+import AdminNav from "@/components/admin/AdminNav";
+import FadeIn from "@/components/ui/FadeIn";
+import { ShieldCheck, LogOut } from "lucide-react";
 
 export default async function AdminLayout({ children }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/admin/login");
   if (session.user.role !== "admin") redirect("/dashboard");
 
+  try {
+    await runSlaBreachCheck({ companyId: session.user.companyId });
+  } catch (err) {
+    console.error("[sla-check] failed:", err);
+  }
+
   const links = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/policies", label: "Policies", icon: BookOpen },
-    { href: "/admin/policies/upload", label: "Upload PDF", icon: Upload },
+    { href: "/admin/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/admin/policies", label: "Policies", icon: "policies" },
+    { href: "/admin/policies/upload", label: "Upload PDF", icon: "upload" },
+    { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
+    { href: "/admin/analytics", label: "Analytics", icon: "analytics" },
+    { href: "/admin/users", label: "Users", icon: "users" },
+    { href: "/admin/audit", label: "Audit log", icon: "audit" },
   ];
 
   return (
@@ -31,18 +38,7 @@ export default async function AdminLayout({ children }) {
           <span className="font-semibold">AegisDesk</span>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition"
-            >
-              <l.icon className="w-4 h-4" />
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminNav links={links} />
 
         <div className="p-3 border-t border-white/10">
           <div className="px-3 py-2 text-xs text-white/40">
@@ -71,7 +67,23 @@ export default async function AdminLayout({ children }) {
           </Link>
         </header>
 
-        <main className="p-4 md:p-8 max-w-5xl mx-auto">{children}</main>
+        <div className="md:hidden border-b border-white/10 px-3 py-2 overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs whitespace-nowrap"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <main className="p-4 md:p-8 max-w-5xl mx-auto">
+          <FadeIn>{children}</FadeIn>
+        </main>
       </div>
     </div>
   );

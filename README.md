@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AegisDesk
 
-## Getting Started
+An AI-powered internal service desk that answers employee questions using company policies (RAG) and automatically creates department tickets (Agentic AI) when policies don't cover the request.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Agentic RAG** — retrieves relevant policies, then decides to **answer**, **clarify**, or **escalate**
+- **Auto ticketing** — escalations create real tickets with sequential IDs (`T-1001`), priority, and SLA deadlines
+- **Role-based access** — Admin · Employee · IT · Security · Finance · Manager
+- **Multi-tenant** — every query is scoped by `companyId` (strict isolation)
+- **Policy management** — admin uploads PDFs, they're chunked, embedded, and searchable
+- **SLA tracking** — automatic breach detection and escalation
+- **Audit log** — every action recorded (who, what, when)
+- **Analytics** — SLA compliance %, ticket volume, per-department breakdown
+- **Chat history** — persists across sessions per employee
+
+## Tech Stack
+
+- **Next.js 16** (App Router) + React 19
+- **Tailwind CSS 4** + Framer Motion
+- **NextAuth** (credentials, JWT sessions)
+- **Prisma 7** + **PostgreSQL** (Supabase) + **pgvector**
+- **Google Gemini** — `gemini-3.5-flash-lite` (chat), `gemini-embedding-001` (embeddings)
+- **Vercel** for deployment
+
+## Architecture
+
+```
+Employee asks question
+        │
+        ▼
+   POST /api/chat
+        │
+        ├─ Embed question (Gemini)
+        ├─ Retrieve top-5 policy chunks (pgvector, company-scoped)
+        └─ Send to LLM with history + open tickets
+                │
+                ▼
+        Agent decides one action:
+        ┌──────────┬──────────┬──────────┐
+        │  answer  │ clarify  │ escalate │
+        └──────────┴──────────┴──────────┘
+             │          │          │
+        Reply with   Ask 1–3   Create ticket
+        citations    follow-ups (dept + priority + SLA)
+                                  │
+                                  ▼
+                          Department queue
+                          → reply / resolve
+                          → resolution posted to chat
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Flow:** RAG retrieves the right policies → the agent decides whether to answer, ask for clarification, or escalate → escalations become real tickets routed to IT / Security / Finance / Manager with SLA deadlines.

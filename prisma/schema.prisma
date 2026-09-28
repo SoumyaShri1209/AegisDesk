@@ -1,21 +1,28 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  domain    String?  @unique
-  plan      String   @default("free")
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  name          String
+  domain        String?  @unique
+  plan          String   @default("free")
+  ticketCounter Int      @default(1000)
+  createdAt     DateTime @default(now())
 
-  users     User[]
-  policies  Policy[]
+  users        User[]
+  policies     Policy[]
+  chunks       PolicyChunk[]
+  tickets      Ticket[]
+  chatSessions ChatSession[]
+  auditLogs    AuditLog[]
 }
 
 model User {
@@ -31,6 +38,12 @@ model User {
   companyId    String
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  employeeTickets Ticket[]      @relation("EmployeeTickets")
+  assignedTickets Ticket[]      @relation("AssignedTickets")
+  ticketReplies   TicketReply[]
+  chatSession     ChatSession?
+  auditLogs       AuditLog[]
+
   @@index([companyId])
   @@index([role])
 }
@@ -38,7 +51,7 @@ model User {
 model Policy {
   id           String   @id @default(cuid())
   companyId    String
-  code         String
+  code         String?
   title        String
   content      String
   department   String?
@@ -48,8 +61,120 @@ model Policy {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  chunks       PolicyChunk[]
 
   @@index([companyId])
   @@index([companyId, department])
+}
+
+model PolicyChunk {
+  id         String   @id @default(cuid())
+  policyId   String
+  companyId  String
+  chunkIndex Int
+  content    String
+  embedding  Unsupported("vector(768)")?
+  createdAt  DateTime @default(now())
+
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([policyId])
+}
+
+model Ticket {
+  id            String    @id @default(cuid())
+  number        Int
+  companyId     String
+  employeeId    String
+  department    String
+  priority      String
+  title         String
+  reason        String
+  status        String    @default("open")
+  slaDueAt      DateTime
+  slaPausedAt   DateTime?
+  slaPauseMs    Int       @default(0)
+  assignedToId  String?
+  resolution    String?
+  resolvedAt    DateTime?
+  closedAt      DateTime?
+  escalatedAt   DateTime?
+  chatSessionId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee     User          @relation("EmployeeTickets", fields: [employeeId], references: [id], onDelete: Cascade)
+  assignedTo   User?         @relation("AssignedTickets", fields: [assignedToId], references: [id], onDelete: SetNull)
+  chatSession  ChatSession?  @relation(fields: [chatSessionId], references: [id], onDelete: SetNull)
+  replies      TicketReply[]
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([companyId, department])
+  @@index([companyId, employeeId])
+  @@index([companyId, status])
+}
+
+model TicketReply {
+  id         String   @id @default(cuid())
+  ticketId   String
+  authorId   String
+  body       String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+  tickets   Ticket[]
+
+  @@index([companyId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  sessionId String
+  role      String
+  content   String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, entityType])
+  @@index([companyId, actorId])
 }

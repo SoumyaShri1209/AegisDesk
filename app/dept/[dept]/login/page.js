@@ -52,7 +52,9 @@ export default function DeptLogin() {
       return;
     }
 
-    router.replace(`/dept/${dept}/dashboard`);
+    // Full navigation so the server sees the new session on first render.
+    // Avoids the redirect race where the layout doesn't see the cookie yet.
+    window.location.href = `/dept/${dept}/dashboard`;
   }
 
   return (
