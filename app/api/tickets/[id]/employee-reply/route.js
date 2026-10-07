@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { logAudit } from "../../../../../lib/audit/log";
+import { computeSlaDue } from "../../../../../lib/tickets/sla";
 
 export const runtime = "nodejs";
 
@@ -19,9 +20,9 @@ export async function POST(req, ctx) {
   });
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (ticket.status === "closed") {
+    if (ticket.status === "closed") {
     return NextResponse.json(
-      { error: "This ticket is closed. Start a new chat to reopen it." },
+      { error: "This ticket is closed and can no longer be reopened." },
       { status: 400 }
     );
   }
@@ -35,6 +36,8 @@ export async function POST(req, ctx) {
   });
 
   const updates = {};
+
+  // Resume SLA if it was paused
   if (ticket.status === "waiting_on_employee") {
     updates.status = "in_progress";
     if (ticket.slaPausedAt) {
@@ -43,6 +46,20 @@ export async function POST(req, ctx) {
       updates.slaPausedAt = null;
     }
   }
+
+  // Employee reply on a resolved ticket = reopen it
+   if (ticket.status === "resolved") {
+    updates.status = "open";
+    updates.resolvedAt = null;
+    updates.resolution = null;
+    updates.closedAt = null;
+    updates.escalatedAt = null;
+    updates.assignedToId = null;
+    updates.slaPausedAt = null;
+    updates.slaPauseMs = 0;
+    updates.slaDueAt = computeSlaDue(ticket.priority);
+  }
+
   if (Object.keys(updates).length > 0) {
     await prisma.ticket.update({ where: { id: ticket.id }, data: updates });
   }

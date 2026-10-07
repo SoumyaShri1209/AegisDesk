@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getSlaState, formatRemaining } from "@/lib/tickets/sla";
 import EmployeeReplyForm from "@/components/tickets/EmployeeReplyForm";
 import { ArrowLeft, CheckCircle2, Clock, MessageSquare } from "lucide-react";
+import ReopenButton from "@/components/tickets/ReopenButton";
 
 export default async function TicketDetailPage({ params }) {
   const { id } = await params;
@@ -69,15 +70,23 @@ export default async function TicketDetailPage({ params }) {
         </div>
       </div>
 
-      {ticket.resolution && (
-        <div className="card p-5 mb-4 border-green-500/30">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span className="text-sm font-medium text-green-300">Resolved</span>
+           {ticket.resolution && (
+          <div className="card p-5 mb-4 border-green-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-medium text-green-300">Resolved</span>
+            </div>
+            <p className="text-sm text-white/80 whitespace-pre-line">{ticket.resolution}</p>
+            {ticket.status === "resolved" && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <p className="text-xs text-white/50 mb-2">
+                  Issue came back? You can reopen this ticket.
+                </p>
+                <ReopenButton ticketId={ticket.id} />
+              </div>
+            )}
           </div>
-          <p className="text-sm text-white/80 whitespace-pre-line">{ticket.resolution}</p>
-        </div>
-      )}
+        )}
 
       <h2 className="text-sm font-medium text-white/60 mb-3">
         Conversation ({ticket.replies.length})
