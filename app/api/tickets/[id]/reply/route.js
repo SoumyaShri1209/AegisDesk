@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { logAudit } from "../../../../../lib/audit/log";
+import { notifyTicketReply } from "../../../../../lib/email/notify";
 
 export const runtime = "nodejs";
 
@@ -10,14 +11,20 @@ const DEPT_ROLES = ["it", "security", "finance", "manager"];
 
 export async function POST(req, ctx) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { id } = await ctx.params;
   const companyId = session.user.companyId;
   const role = session.user.role;
 
-  const ticket = await prisma.ticket.findFirst({ where: { id, companyId } });
-  if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const ticket = await prisma.ticket.findFirst({
+    where: { id, companyId },
+  });
+  if (!ticket) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   if (role !== "admin" && (!DEPT_ROLES.includes(role) || ticket.department !== role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -27,7 +34,9 @@ export async function POST(req, ctx) {
   const text = (body.body || "").trim();
   const isInternal = !!body.isInternal;
 
-  if (!text) return NextResponse.json({ error: "Reply body is required" }, { status: 400 });
+  if (!text) {
+    return NextResponse.json({ error: "Reply body is required" }, { status: 400 });
+  }
 
   const reply = await prisma.ticketReply.create({
     data: {
@@ -59,6 +68,13 @@ export async function POST(req, ctx) {
     entityId: ticket.id,
     metadata: { number: ticket.number, isInternal },
   });
+
+  // Email employee on public replies only
+  if (!isInternal) {
+    notifyTicketReply({ ticket, reply, author: reply.author }).catch((err) =>
+      console.error("[email] notifyTicketReply failed:", err.message)
+    );
+  }
 
   return NextResponse.json({ ok: true, reply });
 }

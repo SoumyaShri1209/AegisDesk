@@ -18,12 +18,13 @@ export default async function AdminLayout({ children }) {
     console.error("[sla-check] failed:", err);
   }
 
-  const links = [
+    const links = [
     { href: "/admin/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/admin/policies", label: "Policies", icon: "policies" },
     { href: "/admin/policies/upload", label: "Upload PDF", icon: "upload" },
     { href: "/admin/tickets", label: "Tickets", icon: "tickets" },
     { href: "/admin/analytics", label: "Analytics", icon: "analytics" },
+    { href: "/admin/settings/sla", label: "SLA rules", icon: "settings" },
     { href: "/admin/users", label: "Users", icon: "users" },
     { href: "/admin/audit", label: "Audit log", icon: "audit" },
   ];

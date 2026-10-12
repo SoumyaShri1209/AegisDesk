@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { logAudit } from "../../../../../lib/audit/log";
-import { computeSlaDue } from "../../../../../lib/tickets/sla";
+import { computeSlaDueFromHours } from "../../../../../lib/tickets/sla";
+import { getSlaHoursForPriority } from "../../../../../lib/tickets/sla-settings";
 
 export const runtime = "nodejs";
 
@@ -31,8 +32,12 @@ export async function POST(_req, ctx) {
     );
   }
 
-  // Fresh SLA clock from now, based on the original priority
-  const newSlaDueAt = computeSlaDue(ticket.priority);
+  // Fresh SLA from the CURRENT company settings
+  const hours = await getSlaHoursForPriority({
+    companyId,
+    priority: ticket.priority,
+  });
+  const newSlaDueAt = computeSlaDueFromHours(hours);
 
   const updated = await prisma.ticket.update({
     where: { id: ticket.id },
@@ -54,7 +59,7 @@ export async function POST(_req, ctx) {
       data: {
         sessionId: ticket.chatSessionId,
         role: "assistant",
-        content: `🔄 **Ticket T-${ticket.number} reopened**\n\nIt's back with the **${ticket.department.toUpperCase()}** team. A fresh SLA of **${slaLabel(ticket.priority)}** has started.`,
+        content: `🔄 **Ticket T-${ticket.number} reopened**\n\nIt's back with the **${ticket.department.toUpperCase()}** team. A fresh SLA of **${hours} hours** has started.`,
         meta: { type: "reopened", ticketNumber: ticket.number },
       },
     });
@@ -70,13 +75,4 @@ export async function POST(_req, ctx) {
   });
 
   return NextResponse.json({ ok: true, ticket: updated });
-}
-
-function slaLabel(priority) {
-  return {
-    critical: "2 hours",
-    high: "8 hours",
-    medium: "24 hours",
-    low: "3 days",
-  }[priority] || "24 hours";
 }

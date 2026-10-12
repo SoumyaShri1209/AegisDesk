@@ -23,7 +23,8 @@ model Company {
   tickets      Ticket[]
   chatSessions ChatSession[]
   auditLogs    AuditLog[]
-    feedback   AnswerFeedback[]
+  feedback   AnswerFeedback[]
+  slaSettings SlaSetting[]
 }
 
 model User {
@@ -202,4 +203,20 @@ model AnswerFeedback {
   @@unique([messageId, userId])
   @@index([companyId, createdAt])
   @@index([companyId, rating])
+}
+
+
+
+
+model SlaSetting {
+  id            String   @id @default(cuid())
+  companyId     String
+  priority      String
+  hours         Int
+  updatedAt     DateTime @updatedAt
+
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, priority])
+  @@index([companyId])
 }

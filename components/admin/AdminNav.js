@@ -10,6 +10,7 @@ import {
   Users,
   History,
   BarChart3,
+  Settings,
 } from "lucide-react";
 
 const ICONS = {
@@ -20,6 +21,7 @@ const ICONS = {
   users: Users,
   audit: History,
   analytics: BarChart3,
+  settings: Settings,
 };
 
 export default function AdminNav({ links }) {

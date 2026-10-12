@@ -4,6 +4,7 @@ import { authOptions } from "../../../../../lib/auth";
 import { prisma } from "../../../../../lib/prisma";
 import { canTransition } from "../../../../../lib/tickets/status";
 import { logAudit } from "../../../../../lib/audit/log";
+import { notifyTicketResolved } from "../../../../../lib/email/notify";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,9 @@ export async function PATCH(req, ctx) {
   const companyId = session.user.companyId;
   const role = session.user.role;
 
-  const ticket = await prisma.ticket.findFirst({ where: { id, companyId } });
+  const ticket = await prisma.ticket.findFirst({
+    where: { id, companyId },
+  });
   if (!ticket) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -32,7 +35,9 @@ export async function PATCH(req, ctx) {
   const next = body.status;
   const resolution = (body.resolution || "").trim();
 
-  if (!next) return NextResponse.json({ error: "status is required" }, { status: 400 });
+  if (!next) {
+    return NextResponse.json({ error: "status is required" }, { status: 400 });
+  }
   if (!canTransition(ticket.status, next)) {
     return NextResponse.json(
       { error: `Cannot move from ${ticket.status} to ${next}` },
@@ -65,9 +70,14 @@ export async function PATCH(req, ctx) {
     updates.resolvedAt = new Date();
   }
 
-  if (next === "closed") updates.closedAt = new Date();
+  if (next === "closed") {
+    updates.closedAt = new Date();
+  }
 
-  const updated = await prisma.ticket.update({ where: { id: ticket.id }, data: updates });
+  const updated = await prisma.ticket.update({
+    where: { id: ticket.id },
+    data: updates,
+  });
 
   if (next === "resolved" && ticket.chatSessionId) {
     await prisma.chatMessage.create({
@@ -88,6 +98,13 @@ export async function PATCH(req, ctx) {
     entityId: ticket.id,
     metadata: { from: ticket.status, to: next, number: ticket.number },
   });
+
+  // Email employee when resolved
+  if (next === "resolved") {
+    notifyTicketResolved({ ticket: updated, resolution }).catch((err) =>
+      console.error("[email] notifyTicketResolved failed:", err.message)
+    );
+  }
 
   return NextResponse.json({ ok: true, ticket: updated });
 }
